@@ -4,7 +4,6 @@
 	animCancel = "skipanim"
 	fpanimationPrefix = "fpAnim"
 	animateElements = new Array()
-	timeout = -1
 	currentElement = 0
 	speed = 1
 	stepsZoom = 8
@@ -30,26 +29,15 @@
 		outEffect=0
 	}
 	function dynAnimation(obj)
-	{		
+	{
 		animateElements = new Array()
 		var ms = navigator.appVersion.indexOf("MSIE")
-		var macness = navigator.appVersion.indexOf("Macintosh")
-
 		ie4 = (ms>0) && (parseInt(navigator.appVersion.substring(ms+5, ms+6)) >= 4)
-		ns6 = false
 		if(!ie4)
 		{
 			if((navigator.appName == "Netscape") &&
-				(parseInt(navigator.appVersion.substring(0, 1)) >= 5))
-			{
-				ns6=true
-				doc_els=document.getElementsByTagName('*')
-			}
-			else if((navigator.appName == "Netscape") &&
-				(parseInt(navigator.appVersion.substring(0, 1)) == 4))
-			{
+				(parseInt(navigator.appVersion.substring(0, 1)) >= 4))
 				doc_els=document.layers
-			}
 			else
 				return
 		}
@@ -130,20 +118,12 @@
 			}
 			else
 			{
+				elprops=el
 				scrollOffsetTop=window.pageYOffset
 				docHeight=window.innerHeight
 				docWidth=window.innerWidth
-				if (ns6)
-				{
-					elprops=el.style
-					elW=100
-					elH=el.offsetHeight
-				}
-				else{
-					elprops=el
-					elW=el.clip.width
-					elH=el.clip.height
-				}
+				elW=el.clip.width
+				elH=el.clip.height
 			}
 			if(outEffect)
 				animationId = el.id.substring(9,el.id.length)
@@ -231,20 +211,12 @@
 					if (ie4 && elprops.position=="absolute")
 					{
 						el.sizeW=el.offsetWidth
-
-						if(macness < 0)
-							elprops.clip="rect(0 0 0 0)"
+						elprops.clip="rect(0 0 0 0)"
 					}
 					else if (!ie4)
 					{
-						if (ns6)
-						{
-							elprops.clip="rect(0 0 0 0)"
-						}
-						else{
-							el.sizeW=el.clip.width
-							el.clip.width=0
-						}
+						el.sizeW=el.clip.width
+						el.clip.width=0
 					}
 				}
 				else if(animation == "wipeTB")
@@ -255,14 +227,8 @@
 					}
 					else if(!ie4)
 					{
-						if (ns6)
-						{
-							elprops.clip="rect(0 0 0 0)"
-						}
-						else{
-							el.sizeH=el.clip.height
-							el.clip.height=0
-						}
+						el.sizeH=el.clip.height
+						el.clip.height=0
 					}
 				}
 				else if(animation == "zoomIn")
@@ -306,23 +272,15 @@
 		}
 		if(animateElements.length > 0)
 		{
-			if(0<=timeout) 
-			{
-				window.clearTimeout(timeout);
-				timeout = -1
-				
-				currentElement=0
-			}
-		
 			if(outEffect)
-				timeout = window.setTimeout("animate(1);", speed, "Javascript")
+				window.setTimeout("animate(1);", speed, "Javascript")
 			else
-				timeout = window.setTimeout("animate(0);", speed, "Javascript")
+				window.setTimeout("animate(0);", speed, "Javascript")
 		}
 	}
 	function offsetLeft(el)
 	{
-		if(ie4 || ns6)
+		if(ie4)
 		{
 			x = el.offsetLeft
 			for (e = el.offsetParent; e; e = e.offsetParent)
@@ -337,7 +295,7 @@
 	} 
 	function offsetTop(el)
 	{
-		if(ie4 || ns6)
+		if(ie4)
 		{
 			y = el.offsetTop
 			for (e = el.offsetParent; e; e = e.offsetParent)
@@ -422,221 +380,181 @@
 	}
 	function animate(animOut)
 	{
+		el = animateElements[currentElement]
+		if(animOut)
+			animationId = el.id.substring(9,el.id.length);
+		else
+			animationId = el.id.substring(6,el.id.length);
+		animation=remSuffix(animationId)
+		if (ie4)
+			elprops=el.style
+		else
+			elprops=el
+
+		if(!step && !animOut)
+			elprops.visibility="visible"
+		step++
+		if(animation == "spiral")
 		{
-			el = animateElements[currentElement]
-
-			if(animOut)
-				animationId = el.id.substring(9,el.id.length);
+			steps = stepsSpiral
+			v = step/steps
+			rf = 1.0 - v
+			t = v * 2.0*Math.PI
+			rx = Math.max(Math.abs(el.initLeft), 200)
+			ry = Math.max(Math.abs(el.initTop),  200)
+			elprops.posLeft = Math.ceil(-rf*Math.cos(t)*rx)
+			elprops.posTop  = Math.ceil(-rf*Math.sin(t)*ry)
+		}
+		else if(animation == "waveWordsL" || animation=="hopWords" || animation == "waveWords")
+		{
+			steps = stepsSpiralWord
+			v = step/steps
+			rf = (1.0 - v)
+			t = v * 1.0*Math.PI
+			elprops.posLeft = Math.ceil(-rf*Math.cos(t)*elprops.r)
+			elprops.posTop  = Math.ceil(-rf*Math.sin(t)*elprops.r)
+		}
+		else if(animation == "waveWordsR")
+		{
+			steps = stepsSpiralWord
+			v = step/steps
+			rf = (1.0 - v)
+			t = v * 1.0*Math.PI
+			elprops.posLeft = Math.ceil(-rf*Math.cos(t)*elprops.r)
+			elprops.posTop  = Math.ceil( rf*Math.sin(t)*elprops.r)
+		}
+		else if(animation == "zoomIn")
+		{
+			steps = stepsZoom
+			elprops.fontSize = Math.ceil(50+50*step/steps) + "%"
+			elprops.posLeft = 0
+		}
+		else if(animation == "zoomOut")
+		{
+			steps = stepsZoom
+			fontSz=Math.ceil(100+200*(steps-step)/steps) + "%"
+			elprops.fontSize = fontSz
+			elprops.posLeft = 0
+		}
+		else if(animation == "elasticRight")
+		{
+			steps = stepsElastic
+			v = step/steps
+			rf=Math.exp(-v*7)
+			t = v * 1.5*Math.PI
+			rx =Math.abs(el.initLeft)
+			elprops.posLeft = rf*Math.cos(t)*rx
+			elprops.posTop  = 0
+		}
+		else if(animation == "elasticBottom")
+		{
+			steps = stepsElastic
+			v = step/steps
+			rf=Math.exp(-v*7)
+			t = v * 2.5*Math.PI
+			ry =Math.abs(el.initTop)
+			elprops.posLeft = 0
+			elprops.posTop  = rf*Math.cos(t)*ry
+		}
+		else if(animation == "wipeLR")
+		{
+			steps = stepsElastic
+			if(ie4 && elprops.position=="absolute")
+				elprops.clip = "rect(0 "+ step/steps*100 +"% 100% 0)"
+			else if (!ie4)
+			{
+				elprops.clip.right=step/steps*el.sizeW
+			}
+		}
+		else if(animation == "wipeTB")
+		{
+			steps = stepsElastic
+			if(ie4 && elprops.position=="absolute")
+				elprops.clip = "rect(0 100% "+step/steps*el.offsetHeight+"px 0)"
 			else
-				animationId = el.id.substring(6,el.id.length);
-			animation=remSuffix(animationId)
-			if (ie4)
-				elprops=el.style
-			else{
-				if (ns6)
-					elprops=el.style
-				else
-					elprops=el
-			}
-
-			if(!step && !animOut)
-				elprops.visibility="visible"
-			step++
-			if(animation == "spiral")
+				elprops.clip.bottom=step/steps*el.sizeH
+		}
+		else if(animation == "wipeMID")
+		{
+			steps = stepsElastic
+			if(ie4 && elprops.position=="absolute")
 			{
-				steps = stepsSpiral
-				v = step/steps
-				rf = 1.0 - v
-				t = v * 2.0*Math.PI
-				rx = Math.max(Math.abs(el.initLeft), 200)
-				ry = Math.max(Math.abs(el.initTop),  200)
-				elprops.posLeft = Math.ceil(-rf*Math.cos(t)*rx)
-				elprops.posTop  = Math.ceil(-rf*Math.sin(t)*ry)
+				elprops.clip = "rect(0 "+el.sizeW/2*(1+step/steps)+"px 100% "+el.sizeW/2*(1-step/steps)+")"
 			}
-			else if(animation == "waveWordsL" || animation=="hopWords" || animation == "waveWords")
+			else if(!ie4)
 			{
-				steps = stepsSpiralWord
-				v = step/steps
-				rf = (1.0 - v)
-				t = v * 1.0*Math.PI
-				elprops.posLeft = Math.ceil(-rf*Math.cos(t)*elprops.r)
-				elprops.posTop  = Math.ceil(-rf*Math.sin(t)*elprops.r)
+				elprops.clip.right=el.sizeW/2*(1+step/steps)
+				elprops.clip.left=el.sizeW/2*(1-step/steps)
 			}
-			else if(animation == "waveWordsR")
+		}
+		else if(animation == "flyCorner")
+		{
+			if(!cornerPhase)
 			{
-				steps = stepsSpiralWord
-				v = step/steps
-				rf = (1.0 - v)
-				t = v * 1.0*Math.PI
-				elprops.posLeft = Math.ceil(-rf*Math.cos(t)*elprops.r)
-				elprops.posTop  = Math.ceil( rf*Math.sin(t)*elprops.r)
-			}
-			else if(animation == "zoomIn")
-			{
-				steps = stepsZoom
-				elprops.fontSize = Math.ceil(50+50*step/steps) + "%"
-				elprops.posLeft = 0
-			}
-			else if(animation == "zoomOut")
-			{
-				steps = stepsZoom
-				fontSz=Math.ceil(100+200*(steps-step)/steps) + "%"
-				elprops.fontSize = fontSz
-				elprops.posLeft = 0
-			}
-			else if(animation == "elasticRight")
-			{
-				steps = stepsElastic
-				v = step/steps
-				rf=Math.exp(-v*7)
-				t = v * 1.5*Math.PI
-				rx =Math.abs(el.initLeft)
-				elprops.posLeft = rf*Math.cos(t)*rx
-				elprops.posTop  = 0
-			}
-			else if(animation == "elasticBottom")
-			{
-				steps = stepsElastic
+				steps = stepsElastic/2
 				v = step/steps
 				rf=Math.exp(-v*7)
 				t = v * 2.5*Math.PI
 				ry =Math.abs(el.initTop)
-				elprops.posLeft = 0
 				elprops.posTop  = rf*Math.cos(t)*ry
-			}
-			else if(animation == "wipeLR")
-			{
-				steps = stepsElastic
-				if(ie4 && elprops.position=="absolute")
-					elprops.clip = "rect(0 "+ step/steps*100 +"% 100% 0)"
-				else if (!ie4)
-				{
-					if (ns6)
-					{
-						postop = elprops.top
-						posleft = elprops.left
-						str="position:absolute;top:"+postop+";left:"+posleft+";clip:rect(0px " + step/steps*el.offsetWidth + "px "+el.offsetHeight+"px 0px)";
-						el.setAttribute("style",str);
-					}
-					else
-						elprops.clip.right=step/steps*el.sizeW
-				}
-			}
-			else if(animation == "wipeTB")
-			{
-				steps = stepsElastic
-				if(ie4 && elprops.position=="absolute")
-					elprops.clip = "rect(0 100% "+step/steps*el.offsetHeight+"px 0)"
-				else{
-					if (ns6)
-					{
-						postop = elprops.top
-						posleft = elprops.left
-						str="position:absolute;top:"+postop+";left:"+posleft+";clip:rect(0px "+ el.offsetWidth + "px " +step/steps*el.offsetHeight+"px 0px)";
-						el.setAttribute("style",str);
-					}
-					else{
-						elprops.clip.bottom=step/steps*el.sizeH		
-					}
-				}
-			}
-			else if(animation == "wipeMID")
-			{
-				steps = stepsElastic
-				if(ie4 && elprops.position=="absolute")
-				{
-					elprops.clip = "rect(0 "+el.sizeW/2*(1+step/steps)+"px 100% "+el.sizeW/2*(1-step/steps)+")"
-				}
-				else if(!ie4)
-				{
-					if (ns6)
-					{
-						postop = elprops.top
-						posleft = elprops.left
-						str="position:absolute;top:"+postop+";left:"+posleft+";clip:rect(0px "+ el.offsetWidth/2*(1+step/steps) + "px "+el.offsetHeight+"px "+el.offsetWidth/2*(1-step/steps)+"px)";
-						el.setAttribute("style",str);	
-					}
-					else{
-						elprops.clip.right=el.sizeW/2*(1+step/steps)
-						elprops.clip.left=el.sizeW/2*(1-step/steps)
-					}
-				}
-			}
-			else if(animation == "flyCorner")
-			{
-				if(!cornerPhase)
-				{
-					steps = stepsElastic/2
-					v = step/steps
-					rf=Math.exp(-v*7)
-					t = v * 2.5*Math.PI
-					ry =Math.abs(el.initTop)
-					elprops.posTop  = Math.ceil(rf*Math.cos(t)*ry)
-				}
-				else
-				{
-					steps = stepsFly
-					dl = el.initLeft / steps
-					elprops.posLeft = elprops.posLeft - dl
-					elprops.posTop = 0
-				}
 			}
 			else
 			{
 				steps = stepsFly
-				if(animation == "dropWord" || animation == "flyTopRightWord" || animation == "flyBottomRightWord")
-					steps = stepsWord
-				dl = (el.endLeft - el.initLeft) / steps
-				dt = (el.endTop  - el.initTop)  / steps
-				elprops.posLeft = elprops.posLeft + dl
-				elprops.posTop = elprops.posTop + dt
+				dl = el.initLeft / steps
+				elprops.posLeft = elprops.posLeft - dl
+				elprops.posTop = 0
 			}
-			if (step >= steps) 
-			{
-				if(!(animation == "wipeLR"	||
-					animation  == "wipeTB"	||
-					animation  == "wipeMID"	||
-					(animation == "flyCorner" && !cornerPhase)))
-				{
-					elprops.posLeft = el.endLeft
-					elprops.posTop = el.endTop
-				}
-				if(animOut)
-				{
-					elprops.visibility="hidden"
-				}
-
-				step = 0
-				if(animation=="flyCorner" && !cornerPhase)
-					cornerPhase=1
-				else
-				{
-					cornerPhase=0
-					currentElement++
-				}
-
-			}
-			if(!ie4)
-			{
-				elprops.left = elprops.posLeft
-				elprops.top = elprops.posTop
-			}
-			if(currentElement < animateElements.length)
-			{
-				if(0<=timeout) 
-				{
-					window.clearTimeout(timeout)
-					timeout = -1
-				}
-			
-				if(animOut)
-					timeout = window.setTimeout("animate(1);", speed, "Javascript")
-				else					
-					timeout = window.setTimeout("animate(0);", speed, "Javascript")
-			}
-			else
-				currentElement=0
 		}
+		else
+		{
+			steps = stepsFly
+			if(animation == "dropWord" || animation == "flyTopRightWord" || animation == "flyBottomRightWord")
+				steps = stepsWord
+			dl = (el.endLeft - el.initLeft) / steps
+			dt = (el.endTop  - el.initTop)  / steps
+			elprops.posLeft = elprops.posLeft + dl
+			elprops.posTop = elprops.posTop + dt
+		}
+		if (step >= steps) 
+		{
+			if(!(animation == "wipeLR"	||
+				animation  == "wipeTB"	||
+				animation  == "wipeMID"	||
+				(animation == "flyCorner" && !cornerPhase)))
+			{
+				elprops.posLeft = el.endLeft
+				elprops.posTop = el.endTop
+			}
+			if(animOut)
+			{
+				elprops.visibility="hidden"
+			}
+
+			step = 0
+			if(animation=="flyCorner" && !cornerPhase)
+				cornerPhase=1
+			else
+			{
+				cornerPhase=0
+				currentElement++
+			}
+
+		}
+		if(!ie4)
+		{
+			elprops.left=elprops.posLeft
+			elprops.top =elprops.posTop
+		}
+		if(currentElement < animateElements.length)
+		{
+			if(animOut)
+				window.setTimeout("animate(1);", speed, "Javascript")
+			else
+				window.setTimeout("animate(0);", speed, "Javascript")
+		}
+		else
+			currentElement=0
 	}
 	function rollIn(el)
 	{
@@ -644,9 +562,7 @@
 		ie4 = (ms>0) && (parseInt(navigator.appVersion.substring(ms+5, ms+6)) >= 4)
 		if(ie4)
 		{
-			el.initstyle=el.style.cssText;
-			var newStyle=el.style.cssText+";"+el.fprolloverstyle;
-			el.style.cssText=newStyle
+			el.initstyle=el.style.cssText;el.style.cssText=el.fprolloverstyle
 		}
 	}
 	function rollOut(el)
@@ -679,3 +595,5 @@
         }
 	}
 //-->
+
+
